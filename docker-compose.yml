@@ -1,0 +1,131 @@
+version: '3.8'
+
+services:
+  # ----------------------------------------------------------------------------
+  # Primary Relational Database (PostgreSQL 16)
+  # ----------------------------------------------------------------------------
+  db:
+    image: postgres:16-alpine
+    container_name: pulsesync-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: pulsesync_secure_password_2026
+      POSTGRES_DB: pulsesync
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - pulsesync-network
+
+  # ----------------------------------------------------------------------------
+  # In-Memory Cache & Session Broker (Redis 7)
+  # ----------------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: pulsesync-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - pulsesync-network
+
+  # ----------------------------------------------------------------------------
+  # PulseSync Backend REST API & Real-Time Engine
+  # ----------------------------------------------------------------------------
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: pulsesync-backend
+    restart: unless-stopped
+    environment:
+      PORT: 5000
+      NODE_ENV: production
+      DATABASE_URL: "file:./dev.db" # Can toggle to postgresql://postgres:pulsesync_secure_password_2026@db:5432/pulsesync
+      JWT_SECRET: "pulsesync_super_secret_jwt_key_production_grade_32_chars_min"
+      JWT_EXPIRES_IN: "7d"
+      CORS_ORIGIN: "*"
+      LOG_LEVEL: "info"
+    ports:
+      - "5000:5000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - pulsesync-network
+
+  # ----------------------------------------------------------------------------
+  # PulseSync Frontend Web Application (Nginx Alpine Reverse Proxy)
+  # ----------------------------------------------------------------------------
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    container_name: pulsesync-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - server
+    networks:
+      - pulsesync-network
+
+  # ----------------------------------------------------------------------------
+  # Prometheus Metrics Telemetry
+  # ----------------------------------------------------------------------------
+  prometheus:
+    image: prom/prometheus:v2.50.1
+    container_name: pulsesync-prometheus
+    restart: unless-stopped
+    volumes:
+      - ./docker/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    ports:
+      - "9090:9090"
+    networks:
+      - pulsesync-network
+
+  # ----------------------------------------------------------------------------
+  # Grafana Dashboards
+  # ----------------------------------------------------------------------------
+  grafana:
+    image: grafana/grafana:10.3.3
+    container_name: pulsesync-grafana
+    restart: unless-stopped
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    ports:
+      - "3001:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    networks:
+      - pulsesync-network
+
+volumes:
+  postgres_data:
+  redis_data:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  pulsesync-network:
+    driver: bridge

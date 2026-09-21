@@ -1,0 +1,249 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "PulseSync SaaS Platform API",
+    "description": "Production-grade RESTful API for Incident Operations, Real-Time Collaboration, Analytics, and Multi-Tenant Management.",
+    "version": "1.0.0",
+    "contact": {
+      "name": "PulseSync Engineering",
+      "url": "https://pulsesync.io",
+      "email": "support@pulsesync.io"
+    }
+  },
+  "servers": [
+    {
+      "url": "/api",
+      "description": "Current Environment API"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Enter JWT token received upon login/registration."
+      },
+      "ApiKeyAuth": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-API-Key",
+        "description": "Enter API Key with prefix 'psk_live_...'"
+      }
+    },
+    "schemas": {
+      "StandardResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "data": { "type": "object" },
+          "message": { "type": "string" },
+          "error": { "type": "string" }
+        }
+      },
+      "Incident": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "title": { "type": "string" },
+          "description": { "type": "string" },
+          "status": {
+            "type": "string",
+            "enum": ["INVESTIGATING", "IDENTIFIED", "MONITORING", "RESOLVED"]
+          },
+          "severity": {
+            "type": "string",
+            "enum": ["CRITICAL", "HIGH", "MEDIUM", "LOW"]
+          },
+          "serviceName": { "type": "string" },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/auth/register": {
+      "post": {
+        "summary": "Register a new user and workspace",
+        "tags": ["Authentication"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name", "email", "password"],
+                "properties": {
+                  "name": { "type": "string", "example": "Sarah Connor" },
+                  "email": { "type": "string", "format": "email", "example": "sarah@skydefense.com" },
+                  "password": { "type": "string", "minLength": 6, "example": "P@ssw0rd123" },
+                  "workspaceName": { "type": "string", "example": "SkyDefense SRE" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "User created and token issued" },
+          "409": { "description": "User already exists" }
+        }
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "summary": "Log in and obtain JWT access token",
+        "tags": ["Authentication"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email", "password"],
+                "properties": {
+                  "email": { "type": "string", "format": "email", "example": "alex@pulsesync.io" },
+                  "password": { "type": "string", "example": "PulseDemo2026!" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Login successful" },
+          "401": { "description": "Invalid credentials" }
+        }
+      }
+    },
+    "/auth/me": {
+      "get": {
+        "summary": "Get current authenticated user profile",
+        "tags": ["Authentication"],
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Current user profile" },
+          "401": { "description": "Unauthorized" }
+        }
+      }
+    },
+    "/incidents": {
+      "get": {
+        "summary": "List incidents with filtering and pagination",
+        "tags": ["Incidents"],
+        "security": [{ "BearerAuth": [] }, { "ApiKeyAuth": [] }],
+        "parameters": [
+          { "name": "status", "in": "query", "schema": { "type": "string" } },
+          { "name": "severity", "in": "query", "schema": { "type": "string" } },
+          { "name": "search", "in": "query", "schema": { "type": "string" } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 50 } },
+          { "name": "offset", "in": "query", "schema": { "type": "integer", "default": 0 } }
+        ],
+        "responses": {
+          "200": { "description": "List of incidents" }
+        }
+      },
+      "post": {
+        "summary": "Create a new incident report",
+        "tags": ["Incidents"],
+        "security": [{ "BearerAuth": [] }, { "ApiKeyAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["title", "description"],
+                "properties": {
+                  "title": { "type": "string", "example": "Payment Gateway 502 Bad Gateway Spike" },
+                  "description": { "type": "string", "example": "Intermittent timeouts observed on payment checkout webhooks." },
+                  "severity": { "type": "string", "enum": ["CRITICAL", "HIGH", "MEDIUM", "LOW"], "default": "MEDIUM" },
+                  "serviceName": { "type": "string", "example": "Checkout Service" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Incident created" }
+        }
+      }
+    },
+    "/incidents/{id}": {
+      "get": {
+        "summary": "Get incident details and communication timeline",
+        "tags": ["Incidents"],
+        "security": [{ "BearerAuth": [] }, { "ApiKeyAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Incident details" },
+          "404": { "description": "Not found" }
+        }
+      },
+      "put": {
+        "summary": "Update incident status, severity, or details",
+        "tags": ["Incidents"],
+        "security": [{ "BearerAuth": [] }, { "ApiKeyAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "status": { "type": "string", "enum": ["INVESTIGATING", "IDENTIFIED", "MONITORING", "RESOLVED"] },
+                  "severity": { "type": "string", "enum": ["CRITICAL", "HIGH", "MEDIUM", "LOW"] }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Incident updated" }
+        }
+      }
+    },
+    "/analytics/dashboard": {
+      "get": {
+        "summary": "Retrieve MTTR, incident distribution, trend charts, and service health",
+        "tags": ["Analytics"],
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": { "description": "SaaS analytics summary" }
+        }
+      }
+    },
+    "/health/live": {
+      "get": {
+        "summary": "Liveness probe for orchestrators",
+        "tags": ["Observability & Health"],
+        "responses": {
+          "200": { "description": "Service is alive" }
+        }
+      }
+    },
+    "/health/ready": {
+      "get": {
+        "summary": "Readiness probe verifying DB connectivity",
+        "tags": ["Observability & Health"],
+        "responses": {
+          "200": { "description": "Service is ready to handle traffic" },
+          "503": { "description": "Service dependencies unavailable" }
+        }
+      }
+    },
+    "/health/telemetry": {
+      "get": {
+        "summary": "Real-time process memory, CPU, and node runtime stats",
+        "tags": ["Observability & Health"],
+        "responses": {
+          "200": { "description": "System telemetry" }
+        }
+      }
+    }
+  }
+}

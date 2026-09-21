@@ -1,0 +1,109 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Workspace {
+  id          String        @id @default(uuid())
+  name        String
+  slug        String        @unique
+  plan        String        @default("PRO") // FREE, PRO, ENTERPRISE
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  users       User[]
+  incidents   Incident[]
+  apiKeys     ApiKey[]
+  auditLogs   AuditLog[]
+}
+
+model User {
+  id           String        @id @default(uuid())
+  email        String        @unique
+  passwordHash String
+  name         String
+  role         String        @default("MEMBER") // ADMIN, MANAGER, MEMBER, VIEWER
+  avatarUrl    String?
+  workspaceId  String
+  workspace    Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  createdIncidents Incident[]       @relation("CreatedIncidents")
+  assignedIncidents Incident[]      @relation("AssignedIncidents")
+  incidentUpdates  IncidentUpdate[]
+  createdKeys      ApiKey[]
+  auditLogs        AuditLog[]
+}
+
+model Incident {
+  id          String        @id @default(uuid())
+  title       String
+  description String
+  status      String        @default("INVESTIGATING") // INVESTIGATING, IDENTIFIED, MONITORING, RESOLVED
+  severity    String        @default("MEDIUM")        // CRITICAL, HIGH, MEDIUM, LOW
+  serviceName String        @default("Core API")
+  workspaceId String
+  workspace   Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  creatorId   String
+  creator     User          @relation("CreatedIncidents", fields: [creatorId], references: [id])
+  assigneeId  String?
+  assignee    User?         @relation("AssignedIncidents", fields: [assigneeId], references: [id])
+  resolvedAt  DateTime?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  updates     IncidentUpdate[]
+}
+
+model IncidentUpdate {
+  id         String    @id @default(uuid())
+  incidentId String
+  incident   Incident  @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  authorId   String
+  author     User      @relation(fields: [authorId], references: [id])
+  message    String
+  status     String
+  createdAt  DateTime  @default(now())
+}
+
+model ApiKey {
+  id          String    @id @default(uuid())
+  name        String
+  keyHash     String    @unique
+  prefix      String
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  creatorId   String
+  creator     User      @relation(fields: [creatorId], references: [id])
+  lastUsedAt  DateTime?
+  revokedAt   DateTime?
+  createdAt   DateTime  @default(now())
+}
+
+model AuditLog {
+  id          String    @id @default(uuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  userId      String?
+  user        User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action      String
+  entityType  String
+  entityId    String?
+  details     String?
+  createdAt   DateTime  @default(now())
+}
+
+model SystemMetric {
+  id                String   @id @default(uuid())
+  timestamp         DateTime @default(now())
+  cpuUsage          Float
+  memoryUsage       Float
+  activeConnections Int
+  requestCount      Int
+  latencyMs         Float
+}
