@@ -1,0 +1,13 @@
+{
+  "name": "pulsesync-saas-platform",
+  "version": "1.0.0",
+  "description": "PulseSync SaaS - Production Incident Operations & Reliability Platform",
+  "scripts": {
+    "build": "npm --prefix client install && npm --prefix client run build && npm --prefix server install && npm --prefix server run prisma:generate && npm --prefix server run prisma:push && npm --prefix server run prisma:seed && npm --prefix server run build",
+    "start": "npm --prefix server start",
+    "test": "npm --prefix server test"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
