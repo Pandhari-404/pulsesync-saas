@@ -9,7 +9,8 @@ import {
   IncidentSeverity,
 } from '../types';
 
-const API_BASE = '/api';
+export const BACKEND_URL = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
+const API_BASE = `${BACKEND_URL}/api`;
 
 export const getAuthToken = (): string | null => {
   return localStorage.getItem('pulsesync_token');
@@ -181,11 +182,11 @@ export const api = {
 
   system: {
     getTelemetry: async (): Promise<any> => {
-      const res = await fetchWithAuth('/health/telemetry');
+      const res = await fetchWithAuth(`${BACKEND_URL}/health/telemetry`);
       return res;
     },
     getHealth: async (): Promise<any> => {
-      const res = await fetchWithAuth('/health/ready');
+      const res = await fetchWithAuth(`${BACKEND_URL}/health/ready`);
       return res;
     },
   },

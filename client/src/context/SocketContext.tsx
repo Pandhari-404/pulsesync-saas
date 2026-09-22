@@ -20,8 +20,8 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [lastEvent, setLastEvent] = useState<{ type: string; data: any; timestamp: string } | null>(null);
 
   useEffect(() => {
-    // Connect to current origin (proxied by Vite or Nginx to backend)
-    const socketInstance = io(window.location.origin, {
+    const backendUrl = import.meta.env.VITE_API_URL || window.location.origin;
+    const socketInstance = io(backendUrl, {
       transports: ['websocket', 'polling'],
       reconnectionAttempts: 10,
       reconnectionDelay: 2000,
