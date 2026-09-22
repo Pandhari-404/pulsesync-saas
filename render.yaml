@@ -22,11 +22,11 @@ services:
       - key: CORS_ORIGIN
         value: "*"
 
+staticSites:
   # ----------------------------------------------------------------------------
   # Frontend Static Site (React + Vite SPA)
   # ----------------------------------------------------------------------------
-  - type: static
-    name: pulsesync-frontend
+  - name: pulsesync-frontend
     rootDir: client
     buildCommand: npm install && npm run build
     staticPublishPath: dist

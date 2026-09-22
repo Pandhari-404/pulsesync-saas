@@ -1,4 +1,6 @@
 import express, { Application } from 'express';
+import path from 'path';
+import fs from 'fs';
 import cors from 'cors';
 import helmet from 'helmet';
 import swaggerUi from 'swagger-ui-express';
@@ -51,17 +53,29 @@ export const createApp = (): Application => {
   app.use('/api/users', userRoutes);
   app.use('/api/keys', apiKeyRoutes);
 
-  // Root welcome endpoint
-  app.get('/', (req, res) => {
-    res.json({
-      name: 'PulseSync SaaS API',
-      version: '1.0.0',
-      status: 'OPERATIONAL',
-      docs: '/api/docs',
-      health: '/health/ready',
-      metrics: '/health/metrics',
+  // Serve static client assets in production if client build is present
+  const clientDistPath = path.resolve(__dirname, '../../client/dist');
+  if (fs.existsSync(clientDistPath)) {
+    app.use(express.static(clientDistPath));
+    app.get('*', (req, res, next) => {
+      if (req.path.startsWith('/api') || req.path.startsWith('/health')) {
+        return next();
+      }
+      res.sendFile(path.resolve(clientDistPath, 'index.html'));
     });
-  });
+  } else {
+    // Root welcome endpoint if frontend is hosted separately
+    app.get('/', (req, res) => {
+      res.json({
+        name: 'PulseSync SaaS API',
+        version: '1.0.0',
+        status: 'OPERATIONAL',
+        docs: '/api/docs',
+        health: '/health/ready',
+        metrics: '/health/metrics',
+      });
+    });
+  }
 
   // Centralized Error Handling Middleware
   app.use(errorHandler);
