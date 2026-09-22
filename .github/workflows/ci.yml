@@ -8,7 +8,7 @@ on:
 
 jobs:
   # ============================================================================
-  # Job 1: Backend Test Suite & Type Verification
+  # Job 1: Backend Lint, Test & Verification
   # ============================================================================
   test-backend:
     name: Backend Lint, Test & Verification
@@ -16,6 +16,12 @@ jobs:
     defaults:
       run:
         working-directory: ./server
+    env:
+      DATABASE_URL: "file:./dev.db"
+      JWT_SECRET: "pulsesync_ci_super_secret_jwt_key_32_chars_min"
+      JWT_EXPIRES_IN: "7d"
+      PORT: "5000"
+      NODE_ENV: "test"
 
     strategy:
       matrix:
@@ -38,7 +44,7 @@ jobs:
       - name: Generate Prisma Client & Sync DB
         run: |
           npx prisma generate
-          npx prisma db push
+          npx prisma db push --accept-data-loss
           npm run prisma:seed
 
       - name: Run Backend Integration & Unit Tests
@@ -75,7 +81,7 @@ jobs:
         run: npm run build
 
   # ============================================================================
-  # Job 3: Containerization Verification
+  # Job 3: Containerization Smoke Test
   # ============================================================================
   docker-smoke-test:
     name: Docker Multi-Stage Build Smoke Test

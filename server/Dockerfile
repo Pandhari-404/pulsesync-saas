@@ -7,6 +7,8 @@ FROM node:22-alpine AS builder
 
 WORKDIR /app
 
+ENV DATABASE_URL="file:./dev.db"
+
 # Install build dependencies
 COPY package*.json tsconfig.json ./
 COPY prisma ./prisma/
@@ -25,6 +27,7 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 ENV PORT=5000
+ENV DATABASE_URL="file:./dev.db"
 
 # Create non-root user for security hardening
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup
